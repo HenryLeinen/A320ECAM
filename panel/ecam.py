@@ -10,7 +10,7 @@ class Ecam:
 		self.lcd.setModeAll(Lcd.NORMAL)
 		self.lcd.setIntensityAll(15)
 		self.lcd.setMaxDigits(0,3)
-		self.lcd.setDecodeModeForDigits(0,[2])
+		self.lcd.setDecodeModeForDigits(0,[])
 		self.lcd.setDigitValue(0, 1, 255)
 		self.brightness = 15
 #		self.adc = Adc(400000)

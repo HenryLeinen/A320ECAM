@@ -1,6 +1,5 @@
 import spidev
 import time
-import RPi.GPIO as GPIO
 
 def get_digit(number, digit):
 	return int(number // 10**digit %10)
@@ -19,25 +18,10 @@ class Lcd:
 		self.spi.lsbfirst	= False
 		self.spi.mode		= 0b00
 		self.spi.bits_per_word	= 8
-		self.spi.cshigh		= True
+		self.spi.cshigh		= False
 		self.max_displays	= max_displays
+		self.max_digits		= [ 1 for x in range(max_displays)]
 		self.values		= [[ 0 for x in range(8)] for y in range(max_displays)]
-		# put the GPIO module into the right mdoe
-		GPIO.setmode(GPIO.BCM)
-		# configure CS_LCD
-		GPIO.setup(7, GPIO.OUT)
-		GPIO.output(7, GPIO.HIGH)
-		# configure CS_AD
-		GPIO.setup(8, GPIO.OUT)
-		GPIO.output(8, GPIO.HIGH)
-
-	def chipSelect(self, state):
-		if state == True:
-			GPIO.output(7, GPIO.LOW)
-			GPIO.output(8, GPIO.HIGH)
-		else:
-			GPIO.output(7, GPIO.HIGH)
-			GPIO.output(8, GPIO.HIGH)
 
 	def send(self, devno, b):
 		arr = []
@@ -46,19 +30,15 @@ class Lcd:
 				arr = arr + b
 			else:
 				arr = arr + [0x00, 0x00]
-#		print ("***Lcd.send(devno={}, b={}, arr={}".format(devno, b, arr))
-		self.chipSelect(True)
+		print ("***Lcd.send(devno={}, b={}, arr={}".format(devno, b, arr))
 		self.spi.writebytes(arr)
-		self.chipSelect(False)
 
 	def sendToAll(self, b):
 		arr = []
 		for i in range(self.max_displays):
 			arr = arr + b
 #		print ("***Lcd.sendAll(b={}, arr={}".format(b, arr))
-		self.chipSelect(True)
 		self.spi.writebytes(arr)
-		self.chipSelect(False)
 
 	def setModeAll(self, mode):
 		if mode == Lcd.NORMAL:
@@ -98,6 +78,7 @@ class Lcd:
 
 	def setMaxDigits(self, devno, maxdigit):
 		self.send(devno, [0x0b, maxdigit-1])
+		self.max_digits[devno] = maxdigit
 
 	def setDigitValue(self, devno, d, v):
 		self.values[devno][d] = v
@@ -105,7 +86,7 @@ class Lcd:
 
 	def sendAll(self, devno):
 #		print ("***Lcd.sendAll(devno={})".format(devno))
-		for i in range(8):
+		for i in range(self.max_digits[devno]):
 			self.send(devno, [i+1, self.values[devno][i]])
 
 	def setDigitValues(self, devno, vals):

@@ -26,6 +26,7 @@ while cont:
 	try:
 		cont = True
 		time.sleep(1)
+		ecam.test()
 	except KeyboardInterrupt:
 		print ("quitting...")
 		cont = False

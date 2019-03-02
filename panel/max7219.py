@@ -82,8 +82,10 @@ class Lcd:
 
 	def setDigitValue(self, devno, d, v):
 		self.values[devno][d] = v
-		self.sendAll(devno)
+#		self.sendAll(devno)
 
+	def flush(self, devno):
+		self.sendAll(devno)
 	def sendAll(self, devno):
 #		print ("***Lcd.sendAll(devno={})".format(devno))
 		for i in range(self.max_digits[devno]):

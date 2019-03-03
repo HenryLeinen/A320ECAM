@@ -1,55 +1,33 @@
 from panel.max7219 import Lcd
 
+# This class interacts with the LED Driver IC MAX7219 in order to drive an LED matrix of size ROWS x COLUMNS
+# To light only one LED, call the 'activateLED' member and pass a tuple or array giving the row and the column
+# index for the particular led to be lit. Both indices are zero based, the column shall be given as bitmask (i.e. 2^column value)
 
 class Leds:
 
-	LED_ENG		= [2,2]
-	LED_BLEED	= [2,4]
-	LED_PRESS	= [2,8]
-	LED_ELEC	= [2,16]
-	LED_HYD		= [2,32]
-	LED_FUEL	= [2,64]
-
-	LED_ALL		= [0,2]
-	LED_FCTL	= [0,4]
-	LED_WHEEL	= [0,8]
-	LED_DOOR	= [0,16]
-	LED_COND	= [0,32]
-	LED_APU		= [0,64]
-
-	LED_EMER_CANC	= [1,2]
-	LED_CLR_R	= [1,4]
-	LED_RCL		= [1,8]
-	LED_STS		= [1,16]
-	LED_CLR_L	= [1,32]
-	LED_TOCONF	= [1,64]
-
-	def __init__(self):
+	def __init__(self, rows, columns):
 		self.lcd = Lcd(40000,1)
 		self.lcd.setModeAll(Lcd.NORMAL)
 		self.lcd.setIntensityAll(5)
-		self.lcd.setMaxDigits(0,3)
+		self.lcd.setMaxDigits(0,rows)
 		self.lcd.setDecodeModeForDigits(0,[])
-		self.lcd.setDigitValue(0,1,0)
-		self.lcd.setDigitValue(0,0,0)
-		self.lcd.setDigitValue(0,2,0)
+		for r in range(0,rows):
+			self.lcd.setDigitValue(0,r,0)
 		self.lcd.flush(0)
 		self.Brightness = 15
+		self.rows = rows
+		self.cols = columns
 
 	def activateLED(self, led):
-		self.lcd.setDigitValue(0,0,0)
-		self.lcd.setDigitValue(0,1,0)
-		self.lcd.setDigitValue(0,2,0)
-		self.lcd.setDigitValue(0,led[0],led[1])
-		self.lcd.flush(0)
+		self.activateLEDs([led])
 
 	def activateLEDs(self, leds):
-		row = [0,0,0]
+		row = [0 for r in range(self.rows)]
 		for l in leds:
 			row[l[0]] = row[l[0]] + l[1]
-		self.lcd.setDigitValue(0,0,row[0])
-		self.lcd.setDigitValue(0,1,row[1])
-		self.lcd.setDigitValue(0,2,row[2])
+		for r in range(self.rows):
+			self.lcd.setDigitValue(0,r,row[r])
 		self.lcd.flush(0)
 
 	def setBrightness(self, b):

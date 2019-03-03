@@ -21,9 +21,30 @@ class Ecam:
 	LAST_CYCLE_MODE = 10
 	MODE_STATUS	= 20
 
+	LED_ENG		= [2,2]
+	LED_BLEED	= [2,4]
+	LED_PRESS	= [2,8]
+	LED_ELEC	= [2,16]
+	LED_HYD		= [2,32]
+	LED_FUEL	= [2,64]
+
+	LED_ALL		= [0,2]
+	LED_FCTL	= [0,4]
+	LED_WHEEL	= [0,8]
+	LED_DOOR	= [0,16]
+	LED_COND	= [0,32]
+	LED_APU		= [0,64]
+
+	LED_EMER_CANC	= [1,2]
+	LED_CLR_R	= [1,4]
+	LED_RCL		= [1,8]
+	LED_STS		= [1,16]
+	LED_CLR_L	= [1,32]
+	LED_TOCONF	= [1,64]
+
 	def __init__(self):
 		self.active = True
-		self.leds = Leds()
+		self.leds = Leds(3, 6)
 		self.adc = Adc(100000)
 		self.adc.readInput(1)
 		self.receiver = 0
@@ -107,43 +128,43 @@ class Ecam:
 	def updateStatus(self):
 		if self.mode == Ecam.MODE_ENG:
 			print ("Mode MODE_ENG activated")
-			self.leds.activateLED(Leds.LED_ENG)
+			self.leds.activateLED(Ecam.LED_ENG)
 		elif self.mode == Ecam.MODE_APU:
 			print ("Mode MODE_APU activated")
-			self.leds.activateLED(Leds.LED_APU)
+			self.leds.activateLED(Ecam.LED_APU)
 		elif self.mode == Ecam.MODE_BLEED:
 			print ("Mode MODE_BLEED activated")
-			self.leds.activateLED(Leds.LED_BLEED)
+			self.leds.activateLED(Ecam.LED_BLEED)
 		elif self.mode == Ecam.MODE_COND:
 			print ("Mode MODE_CON activated")
-			self.leds.activateLED(Leds.LED_COND)
+			self.leds.activateLED(Ecam.LED_COND)
 		elif self.mode == Ecam.MODE_PRESS:
 			print ("Mode MODE_PRESS activated")
-			self.leds.activateLED(Leds.LED_PRESS)
+			self.leds.activateLED(Ecam.LED_PRESS)
 		elif self.mode == Ecam.MODE_DOOR:
 			print ("Mode MODE_DOOR activated")
-			self.leds.activateLED(Leds.LED_DOOR)
+			self.leds.activateLED(Ecam.LED_DOOR)
 		elif self.mode == Ecam.MODE_ELEC:
 			print ("Mode MODE_ELEC activated")
-			self.leds.activateLED(Leds.LED_ELEC)
+			self.leds.activateLED(Ecam.LED_ELEC)
 		elif self.mode == Ecam.MODE_WHEEL:
 			print ("Mode MODE_WHEEL activated")
-			self.leds.activateLED(Leds.LED_WHEEL)
+			self.leds.activateLED(Ecam.LED_WHEEL)
 		elif self.mode == Ecam.MODE_HYD:
 			print ("Mode MODE_HYD acticated")
-			self.leds.activateLED(Leds.LED_HYD)
+			self.leds.activateLED(Ecam.LED_HYD)
 		elif self.mode == Ecam.MODE_FCTL:
 			print ("Mode MODE_FCTL activated")
-			self.leds.activateLED(Leds.LED_FCTL)
+			self.leds.activateLED(Ecam.LED_FCTL)
 		elif self.mode == Ecam.MODE_FUEL:
 			print ("Mode MODE_FUEL activated")
-			self.leds.activateLED(Leds.LED_FUEL)
+			self.leds.activateLED(Ecam.LED_FUEL)
 		elif self.mode == Ecam.MODE_STATUS:
 			print ("Mode MODE_STATUS activated")
 			if self.clr_on == True:
-				self.leds.activateLEDs([Leds.LED_STS, Leds.LED_CLR_L, Leds.LED_CLR_R])
+				self.leds.activateLEDs([Ecam.LED_STS, Ecam.LED_CLR_L, Ecam.LED_CLR_R])
 			else:
-				self.leds.activateLED(Leds.LED_STS)
+				self.leds.activateLED(Ecam.LED_STS)
 
 	def startReceiver(self, hostname, hostport):
 		pass

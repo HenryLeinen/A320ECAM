@@ -43,6 +43,15 @@ class Leds:
 		self.lcd.setDigitValue(0,led[0],led[1])
 		self.lcd.flush(0)
 
+	def activateLEDs(self, leds):
+		row = [0,0,0]
+		for l in leds:
+			row[l[0]] = row[l[0]] + l[1]
+		self.lcd.setDigitValue(0,0,row[0])
+		self.lcd.setDigitValue(0,1,row[1])
+		self.lcd.setDigitValue(0,2,row[2])
+		self.lcd.flush(0)
+
 	def setBrightness(self, b):
 		self.Brightness = b
 		self.lcd.setIntensityAll(0,b)

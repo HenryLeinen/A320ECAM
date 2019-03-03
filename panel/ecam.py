@@ -4,19 +4,21 @@ from panel.keymatrix import Keyboard
 from panel.led import Leds
 
 class Ecam:
-	MODE_ENG 	= 1
-	MODE_APU 	= 2
-	MODE_BLEED 	= 3
-	MODE_COND	= 4
-	MODE_PRESS	= 5
-	MODE_DOOR	= 6
-	MODE_ELEC	= 7
-	MODE_WHEEL	= 8
-	MODE_HYD	= 9
+	# These are the different modes that the ECAM panel can maintain
+
+	FIRST_CYCLE_MODE= 0
+	MODE_ENG 	= 0
+	MODE_APU 	= 6
+	MODE_BLEED 	= 1
+	MODE_COND	= 7
+	MODE_PRESS	= 2
+	MODE_DOOR	= 8
+	MODE_ELEC	= 3
+	MODE_WHEEL	= 9
+	MODE_HYD	= 4
 	MODE_FCTL	= 10
-
-	MODE_FUEL	= 11
-
+	MODE_FUEL	= 5
+	LAST_CYCLE_MODE = 10
 	MODE_STATUS	= 20
 
 	def __init__(self):
@@ -32,6 +34,8 @@ class Ecam:
 		self.keys.registerCallbacks(self.onKeyPressed, 0)
 		self.keys.start()
 		self.mode = Ecam.MODE_STATUS
+		self.mode_last = Ecam.MODE_ENG
+		self.clr_on = False
 
 	def onKeyPressed(self, key):
 		if key == Keyboard.BTN_ENG:
@@ -69,7 +73,35 @@ class Ecam:
 			self.mode = Ecam.MODE_FUEL
 		elif key == Keyboard.BTN_STS:
 			print ("BTN_STATUS pressed")
+			# store the last valid mode, only if it was not status
+			# this is for the use case, that the user presses the ALL button
+			# in which the panel will cycle through all modes (except STATUS)
+			# so we need to remember which was the last valid mode before pressing
+			# STATUS
+			if self.mode != Ecam.MODE_STATUS:
+				self.mode_last = self.mode
 			self.mode = Ecam.MODE_STATUS
+			self.clr_on = False
+		elif key == Keyboard.BTN_CLR:
+			print ("BTN_CLR left was pressed")
+			if self.mode != Ecam.MODE_STATUS:
+				self.mode_last = self.mode
+			self.mode = Ecam.MODE_STATUS
+			self.clr_on = True
+		elif key == Keyboard.BTN_CLR2:
+			print ("BTN_CLR right was pressed")
+			if self.mode != Ecam.MODE_STATUS:
+				self.mode_last = self.mode
+			self.mode = Ecam.MODE_STATUS
+			self.clr_on = True
+		elif key == Keyboard.BTN_ALL:
+			print ("BTN_ALL was pressed")
+			if self.mode != Ecam.MODE_STATUS:
+				self.mode = self.mode + 1
+			else:
+				self.mode = self.mode_last + 1
+			if self.mode > Ecam.LAST_CYCLE_MODE:
+				self.mode = Ecam.FIRST_CYCLE_MODE
 		self.updateStatus()
 
 	def updateStatus(self):
@@ -108,7 +140,10 @@ class Ecam:
 			self.leds.activateLED(Leds.LED_FUEL)
 		elif self.mode == Ecam.MODE_STATUS:
 			print ("Mode MODE_STATUS activated")
-			self.leds.activateLED(Leds.LED_STS)
+			if self.clr_on == True:
+				self.leds.activateLEDs([Leds.LED_STS, Leds.LED_CLR_L, Leds.LED_CLR_R])
+			else:
+				self.leds.activateLED(Leds.LED_STS)
 
 	def startReceiver(self, hostname, hostport):
 		pass

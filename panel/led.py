@@ -32,5 +32,5 @@ class Leds:
 
 	def setBrightness(self, b):
 		self.Brightness = b
-		self.lcd.setIntensityAll(0,b)
+		self.lcd.setIntensityAll(b)
 

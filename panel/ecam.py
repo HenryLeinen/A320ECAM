@@ -2,6 +2,7 @@ from panel.adc import Adc
 from panel.ledstrip import LedStrip
 from panel.keymatrix import Keyboard
 from panel.led import Leds
+from panel.xplane import xplane
 
 class Ecam:
 	# These are the different modes that the ECAM panel can maintain
@@ -57,41 +58,54 @@ class Ecam:
 		self.mode = Ecam.MODE_STATUS
 		self.mode_last = Ecam.MODE_ENG
 		self.clr_on = False
+		self.leds.setBrightness(3)
+		self.xplane = xplane()
 
 	def onKeyPressed(self, key):
 		if key == Keyboard.BTN_ENG:
 			print ("BTN_ENG pressed")
 			self.mode = Ecam.MODE_ENG
+			self.xplane.setMode("ENG")
 		elif key == Keyboard.BTN_APU:
 			print ("BTN_API pressed")
 			self.mode = Ecam.MODE_APU
+			self.xplane.setMode("APU")
 		elif key == Keyboard.BTN_BLEED:
 			print ("BTN_BLEED pressed")
 			self.mode = Ecam.MODE_BLEED
+			self.xplane.setMode("BLEED")
 		elif key == Keyboard.BTN_COND:
 			print ("BTN_COND pressed")
 			self.mode = Ecam.MODE_COND
+			self.xplane.setMode("COND")
 		elif key == Keyboard.BTN_PRESS:
 			print ("BTN_PRESS pressed")
 			self.mode = Ecam.MODE_PRESS
+			self.xplane.setMode("PRESS")
 		elif key == Keyboard.BTN_DOOR:
 			print ("BTN_DOOR pressed")
 			self.mode = Ecam.MODE_DOOR
+			self.xplane.setMode("DOOR")
 		elif key == Keyboard.BTN_ELEC:
 			print ("BTN_ELEC pressed")
 			self.mode = Ecam.MODE_ELEC
+			self.xplane.setMode("ELEC")
 		elif key == Keyboard.BTN_WHEEL:
 			print ("BTN_WHEEL pressed")
 			self.mode = Ecam.MODE_WHEEL
+			self.xplane.setMode("WHEEL")
 		elif key == Keyboard.BTN_HYD:
 			print ("BTN_HYD pressed")
 			self.mode = Ecam.MODE_HYD
+			self.xplane.setMode("HYD")
 		elif key == Keyboard.BTN_FCTL:
 			print ("BTN_FCTL pressed")
 			self.mode = Ecam.MODE_FCTL
+			self.xplane.setMode("FCTL")
 		elif key == Keyboard.BTN_FUEL:
 			print ("BTN_FUEL pressed")
 			self.mode = Ecam.MODE_FUEL
+			self.xplane.setMode("FUEL")
 		elif key == Keyboard.BTN_STS:
 			print ("BTN_STATUS pressed")
 			# store the last valid mode, only if it was not status
@@ -167,7 +181,7 @@ class Ecam:
 				self.leds.activateLED(Ecam.LED_STS)
 
 	def startReceiver(self, hostname, hostport):
-		pass
+		self.xplane.setConnectionDetails(hostname, hostport)
 
 	def stopReceiver(self):
 		pass

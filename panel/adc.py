@@ -7,7 +7,7 @@ class Adc:
 	def __init__(self, max_speed_hz):
 		self.spi = spidev.SpiDev()
 		self.spi.open(0,1)
-		self.spi.max_speed_hz	= max_speed_hz
+		self.spi.max_speed_hz	= 40000 #max_speed_hz
 		self.spi.lsbfirst = False
 		self.spi.mode 		= 0b01
 		self.spi.bits_per_word	= 8

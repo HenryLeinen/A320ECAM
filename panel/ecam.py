@@ -48,7 +48,6 @@ class Ecam:
 		self.leds = Leds(3, 6)
 		self.adc = Adc(100000)
 		self.adc.readInput(1)
-		self.receiver = 0
 		# Initialize the backlighting LED Strip
 		self.ledstrip = LedStrip()
 		# Initialize the Keyboard
@@ -58,8 +57,17 @@ class Ecam:
 		self.mode = Ecam.MODE_STATUS
 		self.mode_last = Ecam.MODE_ENG
 		self.clr_on = False
-		self.leds.setBrightness(3)
+		self.leds.setBrightness(5)
 		self.xplane = xplane()
+		self.xplane.start()
+		self.xplane.setCallback(b"sim/custom/xap/ewd_clr\x00", self.cbkValueChanged)
+
+	def cbkValueChanged(self, idx, newval):
+		if newval > 0:
+			self.clr_on = 1
+		else:
+			self.clr_on = 0
+		self.updateStatus()
 
 	def onKeyPressed(self, key):
 		if key == Keyboard.BTN_ENG:
@@ -119,16 +127,22 @@ class Ecam:
 			self.clr_on = False
 		elif key == Keyboard.BTN_CLR:
 			print ("BTN_CLR left was pressed")
-			if self.mode != Ecam.MODE_STATUS:
-				self.mode_last = self.mode
-			self.mode = Ecam.MODE_STATUS
-			self.clr_on = True
+#			if self.mode != Ecam.MODE_STATUS:
+#				self.mode_last = self.mode
+#			self.mode = Ecam.MODE_STATUS
+			if self.clr_on == True:
+				self.clr_on = False
+			else:
+				self.clr_on = True
 		elif key == Keyboard.BTN_CLR2:
 			print ("BTN_CLR right was pressed")
-			if self.mode != Ecam.MODE_STATUS:
-				self.mode_last = self.mode
-			self.mode = Ecam.MODE_STATUS
-			self.clr_on = True
+#			if self.mode != Ecam.MODE_STATUS:
+#				self.mode_last = self.mode
+#			self.mode = Ecam.MODE_STATUS
+			if self.clr_on == True:
+				self.clr_on = False
+			else:
+				self.clr_on = True
 		elif key == Keyboard.BTN_ALL:
 			print ("BTN_ALL was pressed")
 			if self.mode != Ecam.MODE_STATUS:
@@ -140,56 +154,51 @@ class Ecam:
 		self.updateStatus()
 
 	def updateStatus(self):
+		actvLeds = []
+		if self.clr_on == True:
+			actvLeds.append(Ecam.LED_CLR_L)
+			actvLeds.append(Ecam.LED_CLR_R)
 		if self.mode == Ecam.MODE_ENG:
 			print ("Mode MODE_ENG activated")
-			self.leds.activateLED(Ecam.LED_ENG)
+			actvLeds.append(Ecam.LED_ENG)
 		elif self.mode == Ecam.MODE_APU:
 			print ("Mode MODE_APU activated")
-			self.leds.activateLED(Ecam.LED_APU)
+			actvLeds.append(Ecam.LED_APU)
 		elif self.mode == Ecam.MODE_BLEED:
 			print ("Mode MODE_BLEED activated")
-			self.leds.activateLED(Ecam.LED_BLEED)
+			actvLeds.append(Ecam.LED_BLEED)
 		elif self.mode == Ecam.MODE_COND:
 			print ("Mode MODE_CON activated")
-			self.leds.activateLED(Ecam.LED_COND)
+			actvLeds.append(Ecam.LED_COND)
 		elif self.mode == Ecam.MODE_PRESS:
 			print ("Mode MODE_PRESS activated")
-			self.leds.activateLED(Ecam.LED_PRESS)
+			actvLeds.append(Ecam.LED_PRESS)
 		elif self.mode == Ecam.MODE_DOOR:
 			print ("Mode MODE_DOOR activated")
-			self.leds.activateLED(Ecam.LED_DOOR)
+			actvLeds.append(Ecam.LED_DOOR)
 		elif self.mode == Ecam.MODE_ELEC:
 			print ("Mode MODE_ELEC activated")
-			self.leds.activateLED(Ecam.LED_ELEC)
+			actvLeds.append(Ecam.LED_ELEC)
 		elif self.mode == Ecam.MODE_WHEEL:
 			print ("Mode MODE_WHEEL activated")
-			self.leds.activateLED(Ecam.LED_WHEEL)
+			actvLeds.append(Ecam.LED_WHEEL)
 		elif self.mode == Ecam.MODE_HYD:
 			print ("Mode MODE_HYD acticated")
-			self.leds.activateLED(Ecam.LED_HYD)
+			actvLeds.append(Ecam.LED_HYD)
 		elif self.mode == Ecam.MODE_FCTL:
 			print ("Mode MODE_FCTL activated")
-			self.leds.activateLED(Ecam.LED_FCTL)
+			actvLeds.append(Ecam.LED_FCTL)
 		elif self.mode == Ecam.MODE_FUEL:
 			print ("Mode MODE_FUEL activated")
-			self.leds.activateLED(Ecam.LED_FUEL)
+			actvLeds.append(Ecam.LED_FUEL)
 		elif self.mode == Ecam.MODE_STATUS:
 			print ("Mode MODE_STATUS activated")
-			if self.clr_on == True:
-				self.leds.activateLEDs([Ecam.LED_STS, Ecam.LED_CLR_L, Ecam.LED_CLR_R])
-			else:
-				self.leds.activateLED(Ecam.LED_STS)
-
-	def startReceiver(self, hostname, hostport):
-		self.xplane.setConnectionDetails(hostname, hostport)
-
-	def stopReceiver(self):
-		pass
+			actvLeds.append(Ecam.LED_STS)
+		self.leds.activateLEDs(actvLeds)
 
 	def stop(self):
 		self.keys.stop()
-		if self.receiver != 0:
-			self.receiver.stop()
+		self.xplane.stop()
 		print ("...ECAM terminated...")
 
 	def test(self):

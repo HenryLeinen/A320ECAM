@@ -92,66 +92,60 @@ class Ecam:
 		}
 
 	def cbkValueChanged(self, idx, newval):
-		print ("***** CALLBACK on index " + str(idx))
+		print ("***** CALLBACK on index " + str(idx) + " with value " + str(newval))
 		if idx == "clr":
-			if newval > 0:
-				self.clr_on = 1
-			else:
-				self.clr_on = 0
+			self.clr_on = newval
 		elif idx == "mode":
-			self.mode = self.modes[self.xplane.translateMode(newval)]
+			self.mode = self.modes[newval]
 		elif idx == "toconf":
-			if newval > 0:
-				self.to_conf = 1
-			else:
-				self.to_conf = 0
+			self.to_conf = newval
 		self.updateStatus()
 
 	def onKeyPressed(self, key):
 		if key == Keyboard.BTN_ENG:
 			print ("BTN_ENG pressed")
 			self.mode = Ecam.MODE_ENG
-			self.xplane.setMode("ENG")
+			self.xplane.setValue("mode", "eng")
 		elif key == Keyboard.BTN_APU:
 			print ("BTN_API pressed")
 			self.mode = Ecam.MODE_APU
-			self.xplane.setMode("APU")
+			self.xplane.setValue("mode", "apu")
 		elif key == Keyboard.BTN_BLEED:
 			print ("BTN_BLEED pressed")
 			self.mode = Ecam.MODE_BLEED
-			self.xplane.setMode("BLEED")
+			self.xplane.setValue("mode", "bleed")
 		elif key == Keyboard.BTN_COND:
 			print ("BTN_COND pressed")
 			self.mode = Ecam.MODE_COND
-			self.xplane.setMode("COND")
+			self.xplane.setValue("mode", "cond")
 		elif key == Keyboard.BTN_PRESS:
 			print ("BTN_PRESS pressed")
 			self.mode = Ecam.MODE_PRESS
-			self.xplane.setMode("PRESS")
+			self.xplane.setValue("mode", "press")
 		elif key == Keyboard.BTN_DOOR:
 			print ("BTN_DOOR pressed")
 			self.mode = Ecam.MODE_DOOR
-			self.xplane.setMode("DOOR")
+			self.xplane.setValue("mode", "door")
 		elif key == Keyboard.BTN_ELEC:
 			print ("BTN_ELEC pressed")
 			self.mode = Ecam.MODE_ELEC
-			self.xplane.setMode("ELEC")
+			self.xplane.setValue("mode", "elec")
 		elif key == Keyboard.BTN_WHEEL:
 			print ("BTN_WHEEL pressed")
 			self.mode = Ecam.MODE_WHEEL
-			self.xplane.setMode("WHEEL")
+			self.xplane.setValue("mode", "wheel")
 		elif key == Keyboard.BTN_HYD:
 			print ("BTN_HYD pressed")
 			self.mode = Ecam.MODE_HYD
-			self.xplane.setMode("HYD")
+			self.xplane.setValue("mode", "hyd")
 		elif key == Keyboard.BTN_FCTL:
 			print ("BTN_FCTL pressed")
 			self.mode = Ecam.MODE_FCTL
-			self.xplane.setMode("FCTL")
+			self.xplane.setValue("mode", "fctl")
 		elif key == Keyboard.BTN_FUEL:
 			print ("BTN_FUEL pressed")
 			self.mode = Ecam.MODE_FUEL
-			self.xplane.setMode("FUEL")
+			self.xplane.setValue("mode", "fuel")
 		elif key == Keyboard.BTN_STS:
 			print ("BTN_STATUS pressed")
 			# store the last valid mode, only if it was not status
@@ -165,24 +159,18 @@ class Ecam:
 			self.clr_on = False
 		elif key == Keyboard.BTN_CLR:
 			print ("BTN_CLR left was pressed")
-#			if self.mode != Ecam.MODE_STATUS:
-#				self.mode_last = self.mode
-#			self.mode = Ecam.MODE_STATUS
 			if self.clr_on == True:
 				self.clr_on = False
 			else:
 				self.clr_on = True
-			self.xplane.setClear(self.clr_on)
+			self.xplane.setValue("clr", self.clr_on)
 		elif key == Keyboard.BTN_CLR2:
 			print ("BTN_CLR right was pressed")
-#			if self.mode != Ecam.MODE_STATUS:
-#				self.mode_last = self.mode
-#			self.mode = Ecam.MODE_STATUS
 			if self.clr_on == True:
 				self.clr_on = False
 			else:
 				self.clr_on = True
-			self.xplane.setClear(self.clr_on)
+			self.xplane.setValue("clr", self.clr_on)
 		elif key == Keyboard.BTN_ALL:
 			print ("BTN_ALL was pressed")
 			if self.mode != Ecam.MODE_STATUS:
@@ -191,14 +179,14 @@ class Ecam:
 				self.mode = self.mode_last + 1
 			if self.mode > Ecam.LAST_CYCLE_MODE:
 				self.mode = Ecam.FIRST_CYCLE_MODE
-			self.xplane.setMode(self.rev_modes[self.mode])
+			self.xplane.setValue("mode", self.rev_modes[self.mode])
 		elif key == Keyboard.BTN_TO_CONFIG:
 			print ("BTN_TO_CONFIG was pressed")
 			if self.to_conf == True:
 				self.to_conf = False
 			else:
 				self.to_conf = True
-			self.xplane.setTOConf(self.to_conf)
+			self.xplane.setValue("toconf", self.to_conf)
 		self.updateStatus()
 
 	def updateStatus(self):

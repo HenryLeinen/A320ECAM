@@ -23,6 +23,6 @@ class Adc:
 		else:
 			GPIO.output(1, GPIO.HIGH)
 		sample = self.spi.readbytes(2)
-		print ("Sample read from channel %d: %s", channel, "{0:b}".format((sample[0]+sample[1]<<8)>>7))
+		#print ("Sample read from channel %d: %s", channel, "{0:b}".format((sample[0]+sample[1]<<8)>>7))
 
 

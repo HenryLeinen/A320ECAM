@@ -12,34 +12,8 @@ class xplane(threading.Thread):
 		self.active = True
 		# Initialize the config file parser
 		self.cfg = ConfigParser()
-
-		# Setup the default structure of the mapping and the config file
-		self.cfg["Variables"] = {
-			"Mode":  b"sim/custom/xap/disp/sys/mode\x00",			# e.g. "sim/custom/xap/disp/sys/mode"
-			"Clr":   b"sim/custom/xap/ewd_clr\x00",				# e.g. "sim/custom/xap/ewd_clr"
-			"All":   b"sim/custom/xap/ewd_all\x00",				# e.g. "sim/custom/xap/ewd_all"
-			"BrightnessUpperDisplay": b"sim/custom/xap/lght_upd\x00",		# e.g. "sim/custom/xap/lght_upd"
-			"BrightnessLowerDisplay": b"sim/custom/xap/lght_dnd\x00",		# e.g. "sim/custom/xap/lght_dnd"
-			"TOConf":	b"sim/custom/xap/to_conf_knob\x00",		# e.g. "sim/custom/xap/to_conf_knob"
-		}
-		self.cfg["Requests"] = {
-			"clr": b"sim/custom/xap/ewd_clr\x00",
-			"mode": b"sim/custom/xap/disp/sys/mode\x00",
-			"toconf": b"sim/custom/xap/to_conf_knob\x00"
-		}
-		self.cfg["States"] = {
-			"ENG":		11.0,
-			"APU":		2.0,
-			"BLEED":	7.0,
-			"COND":		8.0,
-			"PRESS":	3.0,
-			"DOOR":		9.0,
-			"WHEEL":	5.0,
-			"ELEC":		6.0,
-			"FCTL":		4.0,
-			"HYD":		0.0,
-			"FUEL":		1.0
-		}
+		# load the config file
+		self.cfg.read('panel/xplane.cfg')
 		# start listening for the X-Plane beacon, which tells us where x-plane is currently running
 		self.beacon = XPlaneBeaconListener()
 		self.beacon.registerChangeEvent(self.xPlaneHostChange)
@@ -54,22 +28,7 @@ class xplane(threading.Thread):
 		self.datarefidx = 0
 		self.xplaneValues = {}
 		self.callbacks = {}
-		# build the reverse lookups
-		self.rev_states = {}
-		for key, val in self.cfg["States"].items():
-			self.rev_states[val] = key
-		print (self.rev_states)
-		self.rev_requests = {}
-		for key, val in self.cfg["Requests"].items():
-			self.rev_requests[val] = key
 
-	# EXPORTED FUNCTION
-	# This function is needed to reverse lookup the float value which is provided by xplane into a logical mode string.
-	# The user of this class only has logical mode values and does not need to know the physical value used by xplane.
-	def translateMode(self, mode):
-		if str(mode) in self.rev_states:
-			#print ("TRANSLATING MODE %s to %s" %(str(mode), self.rev_states[str(mode)]))
-			return self.rev_states[str(mode)]
 
 	# EXPORTED FUNCTION
 	# This function is used by the user of this class and registers a callback function for a particular variable.
@@ -82,6 +41,39 @@ class xplane(threading.Thread):
 			self.callbacks[dataref] = cbk
 		else:
 			print("Callback for variable %s cannot be set."% var)
+
+	# INTERNAL FUNCTION
+	# This function will reinterpret a value received from x-plane into the related logical value which is relevant for the user
+	def _reinterpret(self, var, val):
+		t_key = 'Var.{}'.format(var)
+		# get the type
+		t_type = self.cfg[t_key]["type"]
+		if t_type == "bool":
+			if val == 1.0:
+				return True
+			else:
+				return False
+		elif t_type == "float":
+			return float(val)
+		elif t_type == "enum":
+			# get the name of the map
+			t_map = self.cfg[t_key]["map"]
+			t_val_idx = list(self.cfg[t_map].values()).index(str(val))
+			return list(self.cfg[t_map].keys())[t_val_idx]
+		elif t_type == "linear":
+			t_offs = float(self.cfg[t_key]["offset"])
+			t_slp  = float(self.cfg[t_key]["slope"])
+			# y = offs + m*x   ==> x = (y-offs)/m
+			t_val = (float(val)-t_offs) / t_slp
+			t_min = float(self.cfg[t_key]["range_in_min"])
+			t_max = float(self.cfg[t_key]["range_in_max"])
+			if t_val < t_min:
+				t_val = t_min
+			elif t_val > t_max:
+				t_val = t_max
+			return t_val
+		else:
+			print ("Unknown error !!!!!!!!")
 
 	def xPlaneHostChange(self, stat, host):
 		if stat == XPlaneBeaconListener.LISTENING:
@@ -108,56 +100,60 @@ class xplane(threading.Thread):
 		# stop the receiver
 		self.stopReceiver()
 
-	def sendValue(self, dataref, value):
+	# INTERNAL FUNCTION
+	# Send a dataref change to x-plane
+	def _sendValue(self, dataref, value):
 		cmd = b"DREF\x00"
-		string = dataref.encode()
+		string = dataref.encode('utf-8')
+		string+= '\x00'
 		message = struct.pack("<5sf500s", cmd, value, string)
 		assert(len(message)==509)
 		self.sock.sendto(message, self.UDP_XPL)
 
 	# EXPORTED FUNCTION
-	# This function sends the value of the MODE variable to xplane. It translates the modes logical value into an x-plane understandable value.
-	# Remark: this function shall be replaced by a more abstract implementation in order to make this class generic !
-	def setMode(self, mode):
-		val = self.cfg["States"][mode]
-		self.sendValue(self.cfg["Variables"]["Mode"], float(val))
-
-	# EXPORTED FUNCTION
-	# This function sends the new brightness value for the upper display. It translates the given brightness value into an x-plane understandable value.
-	# Remark: this function shall be replaced by a more abstract implementation in order to make this class generic !
-	def setBrightnessUpper(self, val):		# val ranges from 0 to 1
-		val = 10.0 - val*10.0
-		self.sendValue(self.cfg["Variables"]["BrightnessUpperDisplay"], float(val))
-
-	# EXPORTED FUNCTION
-	# This function sends the new brightness value for the lower display. It translates the given brightness value into an x-plane understandable value.
-	# Remark: this function shall be replaced by a more abstract implementation in order to make this class generic !
-	def setBrightnessLower(self, val):		# val ranges from 0 to 1
-		val = 10.0 - val*10.0
-		self.sendValue(self.cfg["Variables"]["BrightnessLowerDisplay"], float(val))
-
-	# EXPORTED FUNCTION
-	# This function sends the new CLEAR button state. It translates the given value to a float which is understandable by x-plane.
-	# Remark: this function shall be replaced by a more abstract implementation in order to make this class generic !
-	def setClear(self, val):
-		if val == True:
-			v = 1.0
+	# This function sends a value to x-plane. It uses the configuration structure to find out how to interpret the 
+	# value to send
+	def setValue(self, item, value):
+		# look up the item in the configuration structure
+		if item in self.cfg["Variables"].keys():
+			# item does exist, so lookup the dataref and the type
+			t_key = 'Var.{}'.format(item)
+			# get the type
+			t_type = self.cfg[t_key]["type"]
+			if t_type == "bool":
+				if value > 0:
+					t_val = 1.0
+				else:
+					t_val = 0.0
+				self._sendValue(self.cfg["Variables"][item], float(t_val))
+			elif t_type == "float":
+				self._sendValue(self.cfg["Variables"][item], float(val))
+			elif t_type == "enum":
+				# get the name of the map
+				t_map = self.cfg[t_key]["map"]
+				t_val = self.cfg[t_map][value]
+				self._sendValue(self.cfg["Variables"][item], float(t_val))
+			elif t_type == "linear":
+				# get min, max values against which we need to clip the input
+				t_min = float(self.cfg[t_key]["range_in_min"])
+				t_max = float(self.cfg[t_key]["range_in_max"])
+				if float(value) < t_min:
+					value = t_min
+				elif float(value) > t_max:
+					value = t_max
+				# get the offset and the slope to calculate the new value
+				t_offs = float(self.cfg[t_key]["offset"])
+				t_slp  = float(self.cfg[t_key]["slope"])
+				t_val = t_offs + t_slp*float(value)
+				self._sendValue(self.cfg["Variables"][item], float(t_val))
+			else:
+				print ("Invalid mapping table !!!")
 		else:
-			v = 0.0
-		self.sendValue(self.cfg["Variables"]["Clr"], float(v))
+			print ("setValue: Invalid item")
 
-	# EXPORTED FUNCTION
-	# This function sends the status of the T.O. Config knob. It translates the given value to a float value which is understandable by x-plane.
-	# Remark: this function shall be replaced by a more abstract implementation in order to make this class generic !
-	def setTOConf(self, val):
-		if val == True:
-			v = 1.0
-		else:
-			v = 0.0
-		self.sendValue(self.cfg["Variables"]["toconf"], float(v))
-
-
-	def request(self, dataref, freq=None):
+	# INTERNAL FUNCTION
+	# This function will send a dataref request to x-plane. The update frequency is optional and defaults to 1 per second
+	def _request(self, dataref, freq=None):
 		if freq == None:
 			freq = 1
 		# check whether or not this has already been requested
@@ -174,25 +170,32 @@ class xplane(threading.Thread):
 			self.datarefidx += 1
 			self.xplaneValues[dataref] = 0
 		cmd = b"RREF\x00"
-		string = dataref.encode()
+		string = dataref.encode('utf-8') + '\x00'
 		print ("Requesting dataref %s using index %d" % (dataref, idx))
 		message = struct.pack("<5sii400s", cmd, freq, idx, string)
 		self.sock.sendto(message, self.UDP_XPL)
 
-	def subscribe(self):
+	# INTERNAL FUNCTION
+	# This function will subscribe to all datarefs given in the configuration file listed under the 'Requests' section.
+	def _subscribe(self):
 		for var in list(self.cfg["Requests"].keys()):
-			self.request(self.cfg["Requests"][var])
+			self._request(self.cfg["Requests"][var])
 
+	# EXTERNAL FUNCTION
+	# This function will initiate the receiver function by resubscribing to the dataref values from the config file.
 	def startReceiver(self):
 		# Subscribe to the datarefs
-		self.subscribe()
+		self._subscribe()
 
+	# EXTERNAL FUNCTION
+	# This function currently does nothing meaningful
 	def stopReceiver(self):
 		pass
 
-
-	def parse(self, retvalues):
-		#print ("Parsing ", retvalues)
+	# INTERNAL FUNCTION
+	# This function will parse a list of received datarefs for changes. If changes are found, it will inform the user by calling the respective callback function
+	# which has been registered previously be the user of this class using the external function <setCallback>
+	def _parse(self, retvalues):
 		for idx in retvalues:		# iterate through the returned values using the 'dataref' value
 			if idx in self.xplaneValues.keys():
 				orgval = self.xplaneValues[idx]
@@ -206,7 +209,9 @@ class xplane(threading.Thread):
 						print ("Calling callback for %s" % idx.strip('\x00'))
 						v1 = list(self.cfg["Requests"].values()).index(idx)
 						v2 = list(self.cfg["Requests"].keys())[v1]
-						self.callbacks[idx](v2, newval)
+						newval_int = self._reinterpret(v2, newval)		# revers interpret the x-plane value into the logical value known to the calling app
+						# print ("New value is %d, converting %s"%(newval, newval_int))
+						self.callbacks[idx](v2, newval_int)
 					else:
 						print ("No callback for %s" % idx)
 				else:
@@ -243,7 +248,7 @@ class xplane(threading.Thread):
 							# retvalues is a map of 'dataref': float_value pairs
 							retvalues[self.datarefs[idx]] = fval
 					# parse the values to find out what changes we received
-					self.parse(retvalues)
+					self._parse(retvalues)
 				elif header == b"RPOS":
 					print ("Position information rececived !")
 				elif header == b"DATA":

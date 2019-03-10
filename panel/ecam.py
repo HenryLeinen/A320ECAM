@@ -57,16 +57,54 @@ class Ecam:
 		self.mode = Ecam.MODE_STATUS
 		self.mode_last = Ecam.MODE_ENG
 		self.clr_on = False
+		self.to_conf = False
 		self.leds.setBrightness(5)
 		self.xplane = xplane()
 		self.xplane.start()
-		self.xplane.setCallback(b"sim/custom/xap/ewd_clr\x00", self.cbkValueChanged)
+		self.xplane.setCallback("clr", self.cbkValueChanged)
+		self.xplane.setCallback("mode", self.cbkValueChanged)
+		self.xplane.setCallback("toconf", self.cbkValueChanged)
+		self.modes = {
+			"eng": Ecam.MODE_ENG,
+			"apu": Ecam.MODE_APU,
+			"bleed": Ecam.MODE_BLEED,
+			"cond": Ecam.MODE_COND,
+			"press": Ecam.MODE_PRESS,
+			"door": Ecam.MODE_DOOR,
+			"elec": Ecam.MODE_ELEC,
+			"wheel": Ecam.MODE_WHEEL,
+			"hyd": Ecam.MODE_HYD,
+			"fctl": Ecam.MODE_FCTL,
+			"fuel": Ecam.MODE_FUEL
+		}
+		self.rev_modes = {
+			Ecam.MODE_ENG: "eng",
+			Ecam.MODE_APU: "apu",
+			Ecam.MODE_BLEED: "bleed",
+			Ecam.MODE_COND: "cond",
+			Ecam.MODE_PRESS: "press",
+			Ecam.MODE_DOOR: "door",
+			Ecam.MODE_ELEC: "elec",
+			Ecam.MODE_WHEEL: "wheel",
+			Ecam.MODE_HYD: "hyd",
+			Ecam.MODE_FCTL: "fctl",
+			Ecam.MODE_FUEL: "fuel"
+		}
 
 	def cbkValueChanged(self, idx, newval):
-		if newval > 0:
-			self.clr_on = 1
-		else:
-			self.clr_on = 0
+		print ("***** CALLBACK on index " + str(idx))
+		if idx == "clr":
+			if newval > 0:
+				self.clr_on = 1
+			else:
+				self.clr_on = 0
+		elif idx == "mode":
+			self.mode = self.modes[self.xplane.translateMode(newval)]
+		elif idx == "toconf":
+			if newval > 0:
+				self.to_conf = 1
+			else:
+				self.to_conf = 0
 		self.updateStatus()
 
 	def onKeyPressed(self, key):
@@ -134,6 +172,7 @@ class Ecam:
 				self.clr_on = False
 			else:
 				self.clr_on = True
+			self.xplane.setClear(self.clr_on)
 		elif key == Keyboard.BTN_CLR2:
 			print ("BTN_CLR right was pressed")
 #			if self.mode != Ecam.MODE_STATUS:
@@ -143,6 +182,7 @@ class Ecam:
 				self.clr_on = False
 			else:
 				self.clr_on = True
+			self.xplane.setClear(self.clr_on)
 		elif key == Keyboard.BTN_ALL:
 			print ("BTN_ALL was pressed")
 			if self.mode != Ecam.MODE_STATUS:
@@ -151,6 +191,14 @@ class Ecam:
 				self.mode = self.mode_last + 1
 			if self.mode > Ecam.LAST_CYCLE_MODE:
 				self.mode = Ecam.FIRST_CYCLE_MODE
+			self.xplane.setMode(self.rev_modes[self.mode])
+		elif key == Keyboard.BTN_TO_CONFIG:
+			print ("BTN_TO_CONFIG was pressed")
+			if self.to_conf == True:
+				self.to_conf = False
+			else:
+				self.to_conf = True
+			self.xplane.setTOConf(self.to_conf)
 		self.updateStatus()
 
 	def updateStatus(self):
@@ -158,6 +206,8 @@ class Ecam:
 		if self.clr_on == True:
 			actvLeds.append(Ecam.LED_CLR_L)
 			actvLeds.append(Ecam.LED_CLR_R)
+		if self.to_conf == True:
+			actvLeds.append(Ecam.LED_TOCONF)
 		if self.mode == Ecam.MODE_ENG:
 			print ("Mode MODE_ENG activated")
 			actvLeds.append(Ecam.LED_ENG)

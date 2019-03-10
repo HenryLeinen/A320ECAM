@@ -30,7 +30,7 @@ class Lcd:
 				arr = arr + b
 			else:
 				arr = arr + [0x00, 0x00]
-		print ("***Lcd.send(devno={}, b={}, arr={}".format(devno, b, arr))
+#		print ("***Lcd.send(devno={}, b={}, arr={}".format(devno, b, arr))
 		self.spi.writebytes(arr)
 
 	def sendToAll(self, b):
@@ -70,7 +70,7 @@ class Lcd:
 
 	def setDecodeModeForDigits(self, devno, digitlist):
 		digits = 0
-		print ("Activating digits : ")
+#		print ("Activating digits : ")
 		for i,d in enumerate(digitlist):
 			print (" ", d)
 			digits = digits | 2**d

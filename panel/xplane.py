@@ -19,10 +19,13 @@ class xplane(threading.Thread):
 			"Clr":   b"sim/custom/xap/ewd_clr\x00",				# e.g. "sim/custom/xap/ewd_clr"
 			"All":   b"sim/custom/xap/ewd_all\x00",				# e.g. "sim/custom/xap/ewd_all"
 			"BrightnessUpperDisplay": b"sim/custom/xap/lght_upd\x00",		# e.g. "sim/custom/xap/lght_upd"
-			"BrightnessLowerDisplay": b"sim/custom/xap/lght_dnd\x00"		# e.g. "sim/custom/xap/lght_dnd"
+			"BrightnessLowerDisplay": b"sim/custom/xap/lght_dnd\x00",		# e.g. "sim/custom/xap/lght_dnd"
+			"TOConf":	b"sim/custom/xap/to_conf_knob\x00",		# e.g. "sim/custom/xap/to_conf_knob"
 		}
 		self.cfg["Requests"] = {
-			b"sim/custom/xap/ewd_clr\x00": 1
+			"clr": b"sim/custom/xap/ewd_clr\x00",
+			"mode": b"sim/custom/xap/disp/sys/mode\x00",
+			"toconf": b"sim/custom/xap/to_conf_knob\x00"
 		}
 		self.cfg["States"] = {
 			"ENG":		11.0,
@@ -51,9 +54,34 @@ class xplane(threading.Thread):
 		self.datarefidx = 0
 		self.xplaneValues = {}
 		self.callbacks = {}
+		# build the reverse lookups
+		self.rev_states = {}
+		for key, val in self.cfg["States"].items():
+			self.rev_states[val] = key
+		print (self.rev_states)
+		self.rev_requests = {}
+		for key, val in self.cfg["Requests"].items():
+			self.rev_requests[val] = key
 
+	# EXPORTED FUNCTION
+	# This function is needed to reverse lookup the float value which is provided by xplane into a logical mode string.
+	# The user of this class only has logical mode values and does not need to know the physical value used by xplane.
+	def translateMode(self, mode):
+		if str(mode) in self.rev_states:
+			#print ("TRANSLATING MODE %s to %s" %(str(mode), self.rev_states[str(mode)]))
+			return self.rev_states[str(mode)]
+
+	# EXPORTED FUNCTION
+	# This function is used by the user of this class and registers a callback function for a particular variable.
+	# The variable is a logical variable name, which will internally be translated into an xplane variable using a lookup table
 	def setCallback(self, var, cbk):
-		self.callbacks[var] = cbk
+		# lookup the dataref value which is related to the given variable
+		if var in self.cfg["Requests"].keys():
+			dataref = self.cfg["Requests"][var]
+			#print ("Setting callback for variable %s"%dataref)
+			self.callbacks[dataref] = cbk
+		else:
+			print("Callback for variable %s cannot be set."% var)
 
 	def xPlaneHostChange(self, stat, host):
 		if stat == XPlaneBeaconListener.LISTENING:
@@ -69,6 +97,8 @@ class xplane(threading.Thread):
 			self.UDP_XPL = ("localhost", 49009)
 			self.stopReceiver()
 
+	# EXPORTED FUNCTION
+	# This function must be used to stop receiving from x-plane. It also stops the beacon receiver and closes the socket in order to terminate.
 	def stop(self):
 		self.active = False
 		# stop the beacon
@@ -85,20 +115,47 @@ class xplane(threading.Thread):
 		assert(len(message)==509)
 		self.sock.sendto(message, self.UDP_XPL)
 
+	# EXPORTED FUNCTION
+	# This function sends the value of the MODE variable to xplane. It translates the modes logical value into an x-plane understandable value.
+	# Remark: this function shall be replaced by a more abstract implementation in order to make this class generic !
 	def setMode(self, mode):
 		val = self.cfg["States"][mode]
 		self.sendValue(self.cfg["Variables"]["Mode"], float(val))
 
+	# EXPORTED FUNCTION
+	# This function sends the new brightness value for the upper display. It translates the given brightness value into an x-plane understandable value.
+	# Remark: this function shall be replaced by a more abstract implementation in order to make this class generic !
 	def setBrightnessUpper(self, val):		# val ranges from 0 to 1
 		val = 10.0 - val*10.0
 		self.sendValue(self.cfg["Variables"]["BrightnessUpperDisplay"], float(val))
 
+	# EXPORTED FUNCTION
+	# This function sends the new brightness value for the lower display. It translates the given brightness value into an x-plane understandable value.
+	# Remark: this function shall be replaced by a more abstract implementation in order to make this class generic !
 	def setBrightnessLower(self, val):		# val ranges from 0 to 1
 		val = 10.0 - val*10.0
 		self.sendValue(self.cfg["Variables"]["BrightnessLowerDisplay"], float(val))
 
+	# EXPORTED FUNCTION
+	# This function sends the new CLEAR button state. It translates the given value to a float which is understandable by x-plane.
+	# Remark: this function shall be replaced by a more abstract implementation in order to make this class generic !
 	def setClear(self, val):
-		self.sendValue(self.cfg["Variables"]["Clr"], float(val))
+		if val == True:
+			v = 1.0
+		else:
+			v = 0.0
+		self.sendValue(self.cfg["Variables"]["Clr"], float(v))
+
+	# EXPORTED FUNCTION
+	# This function sends the status of the T.O. Config knob. It translates the given value to a float value which is understandable by x-plane.
+	# Remark: this function shall be replaced by a more abstract implementation in order to make this class generic !
+	def setTOConf(self, val):
+		if val == True:
+			v = 1.0
+		else:
+			v = 0.0
+		self.sendValue(self.cfg["Variables"]["toconf"], float(v))
+
 
 	def request(self, dataref, freq=None):
 		if freq == None:
@@ -118,12 +175,13 @@ class xplane(threading.Thread):
 			self.xplaneValues[dataref] = 0
 		cmd = b"RREF\x00"
 		string = dataref.encode()
-		print ("Requesting dataref %s using index %d", dataref, idx)
+		print ("Requesting dataref %s using index %d" % (dataref, idx))
 		message = struct.pack("<5sii400s", cmd, freq, idx, string)
 		self.sock.sendto(message, self.UDP_XPL)
 
 	def subscribe(self):
-		self.request(b"sim/custom/xap/ewd_clr\x00")
+		for var in list(self.cfg["Requests"].keys()):
+			self.request(self.cfg["Requests"][var])
 
 	def startReceiver(self):
 		# Subscribe to the datarefs
@@ -134,23 +192,26 @@ class xplane(threading.Thread):
 
 
 	def parse(self, retvalues):
-		print ("Parsing ", retvalues)
-		for idx in retvalues:
+		#print ("Parsing ", retvalues)
+		for idx in retvalues:		# iterate through the returned values using the 'dataref' value
 			if idx in self.xplaneValues.keys():
 				orgval = self.xplaneValues[idx]
 				newval = retvalues[idx]
 				if orgval != newval:
-					print ("Value " + idx + " has changed from " + str(orgval) + " to " + str(newval))
+					print ("Value %s has changed from %s to %s." %(str(idx).strip(b'\x00'), str(orgval), str(newval)))
 					# trigger change notification
 					self.xplaneValues[idx] = newval
 					# call callback function if existing
 					if idx in self.callbacks.keys():
-						print ("Calling callback for %s" % idx)
-						self.callbacks[idx](idx, newval)
+						print ("Calling callback for %s" % idx.strip('\x00'))
+						v1 = list(self.cfg["Requests"].values()).index(idx)
+						v2 = list(self.cfg["Requests"].keys())[v1]
+						self.callbacks[idx](v2, newval)
 					else:
 						print ("No callback for %s" % idx)
 				else:
-					print ("Value did not change")
+					#print ("Value did not change")
+					pass
 			else:
 				self.xplaneValues[idx] = newval
 				print ("################ Unknown dataref received %s" % idx)
@@ -177,8 +238,9 @@ class xplane(threading.Thread):
 						# extract each individual value from the stream
 						singledata = values[i*8:(i+1)*8]
 						(idx, fval) = struct.unpack("<if", singledata)
-						print ("Item with index %d found" %idx)
+						#print ("Item with index %d found" %idx)
 						if idx in self.datarefs.keys():
+							# retvalues is a map of 'dataref': float_value pairs
 							retvalues[self.datarefs[idx]] = fval
 					# parse the values to find out what changes we received
 					self.parse(retvalues)

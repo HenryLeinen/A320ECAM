@@ -1,3 +1,4 @@
+from panel.config import config
 from panel.adc import Adc
 from panel.ledstrip import LedStrip
 from panel.keymatrix import Keyboard
@@ -43,9 +44,11 @@ class Ecam:
 	LED_CLR_L	= [1,32]
 	LED_TOCONF	= [1,64]
 
-	def __init__(self):
+	def __init__(self, dbg=0):
 		self.active = True
+		self.dbg = dbg
 		self.leds = Leds(3, 6)
+		self.leds.setBrightness(5)
 		self.adc = Adc(100000)
 		self.adc.readInput(1)
 		# Initialize the backlighting LED Strip
@@ -54,13 +57,20 @@ class Ecam:
 		self.keys = Keyboard([2,3,4],[17,27,22,23,24,25])
 		self.keys.registerCallbacks(self.onKeyPressed, 0)
 		self.keys.start()
+		# Initialize the ECAM modes
 		self.mode = Ecam.MODE_STATUS
 		self.mode_last = Ecam.MODE_ENG
+		# Initialize the ECAM Clear and TO Config button states
 		self.clr_on = False
 		self.to_conf = False
-		self.leds.setBrightness(5)
-		self.xplane = xplane()
+		# Initialize the config file parser
+		self.cfg = config()
+		# load the configuration file
+		self.cfg.load('config/xplane.cfg')
+		#  Initialize the xplane receiver module
+		self.xplane = xplane(self.cfg, dbg)	
 		self.xplane.start()
+		# Setup the callbacks for incoming mode changes
 		self.xplane.setCallback("clr", self.cbkValueChanged)
 		self.xplane.setCallback("mode", self.cbkValueChanged)
 		self.xplane.setCallback("toconf", self.cbkValueChanged)
@@ -75,7 +85,8 @@ class Ecam:
 			"wheel": Ecam.MODE_WHEEL,
 			"hyd": Ecam.MODE_HYD,
 			"fctl": Ecam.MODE_FCTL,
-			"fuel": Ecam.MODE_FUEL
+			"fuel": Ecam.MODE_FUEL,
+			"sts": Ecam.MODE_STATUS,
 		}
 		self.rev_modes = {
 			Ecam.MODE_ENG: "eng",
@@ -88,7 +99,8 @@ class Ecam:
 			Ecam.MODE_WHEEL: "wheel",
 			Ecam.MODE_HYD: "hyd",
 			Ecam.MODE_FCTL: "fctl",
-			Ecam.MODE_FUEL: "fuel"
+			Ecam.MODE_FUEL: "fuel",
+			Ecam.MODE_STATUS: "sts",
 		}
 
 	def cbkValueChanged(self, idx, newval):
@@ -156,6 +168,7 @@ class Ecam:
 			if self.mode != Ecam.MODE_STATUS:
 				self.mode_last = self.mode
 			self.mode = Ecam.MODE_STATUS
+			self.xplane.setValue("mode", "sts")
 			self.clr_on = False
 		elif key == Keyboard.BTN_CLR:
 			print ("BTN_CLR left was pressed")
